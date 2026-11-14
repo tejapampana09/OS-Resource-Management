@@ -133,8 +133,9 @@ show_live_processes() {
                 pause_screen
                 return 0
             fi
+            local current_pid="$BASHPID"
             local parent_pid
-            parent_pid=$(ps -o ppid= -p "$BASHPID" 2>/dev/null | tr -d '[:space:]')
+            parent_pid=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d '[:space:]')
             if [[ "$parent_pid" =~ ^[0-9]+$ ]] && (( t_pid == parent_pid )); then
                 msg_error "Cannot terminate the parent terminal or launcher process (${t_pid})."
                 pause_screen
