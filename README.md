@@ -2,16 +2,15 @@
 
 <div align="center">
 
-[![Bash Shell](https://img.shields.io/badge/Language-GNU%20Bash%205.0+-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL%20%7C%20macOS-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://ubuntu.com/wsl)
+[![Bash Shell](https://img.shields.io/badge/Language-GNU%20Bash%204.4%2B-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![Platform](https://img.shields.io/badge/Verified%20on-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#-installation--quick-start)
 [![Tests](https://img.shields.io/badge/Acceptance%20Tests-27%2F27%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
 [![Architecture](https://img.shields.io/badge/Architecture-Modular%20TUI-blue?style=for-the-badge)](#-system-architecture)
 [![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
 
-**An enterprise-grade, interactive terminal-based Operating Systems simulation engine and live Linux telemetry toolkit.**  
-*Combines rigorous mathematical models of fundamental OS algorithms with real-time host inspection.*
+**A Bash terminal application for exploring operating systems algorithms and inspecting live Linux resource usage.**
 
-[Explore Features](#-feature-matrix) • [Quick Start](#-quick-start) • [Architecture](#-system-architecture) • [Team Roles](#-team-workstream-distribution) • [Viva Guide](#-viva-voce--academic-defense)
+[Explore Features](#-feature-matrix) • [Quick Start](#-installation--quick-start) • [Architecture](#-system-architecture) • [Team Roles](#-team-workstream-distribution) • [Viva Guide](#-viva-voce--academic-defense)
 
 </div>
 
@@ -47,9 +46,9 @@
 Operating Systems concepts are often taught through isolated textbook problems, making it challenging for students and engineers to visualize how scheduling choices, memory policies, synchronization barriers, and disk seeks interact.
 
 The **OS Resource Management & Simulation Suite** solves this by delivering:
-1. **Interactive Simulation Engine**: Mathematically accurate models for all major OS algorithms with dynamic ASCII Gantt charts, step-by-step frame traces, allocation grids, and side-by-side performance comparisons.
+1. **Interactive simulation** with Gantt charts, page-frame traces, allocation grids, and side-by-side algorithm comparisons.
 2. **Real-time Host Telemetry**: A safe, non-root inspection suite querying the host's actual CPU, process tables, RAM utilization, filesystem mountpoints, and block devices via `/proc` and Linux core utilities.
-3. **Automated Verification Harness**: A built-in test runner validating 27 assertions for textbook cases and regressions with zero external dependencies.
+3. **Automated Verification Harness**: A built-in test runner with 27 checks for textbook cases and regressions, using Bash and standard command-line utilities.
 4. **Audit Logging**: Structured CSV records and timestamped execution logs for academic evaluation and reporting.
 
 ---
@@ -68,7 +67,7 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
  • SJF (Non-pre)   • Best Fit          • Matrix Detection  • SSTF            • RAM & Swap
  • SRTF (Preemp)   • Worst Fit         • Producer-Consumer • SCAN (Elevator) • Disk & Mounts
  • Priority        • FIFO Paging       • Mutex & Semaphores• C-SCAN          • Block Devices
- • Round Robin     • LRU Paging        • 4 Coffman Cond.   • LOOK            • Process Tree
+ • Round Robin     • LRU Paging        • 4 Coffman Cond.   • LOOK            • Process Search
  • Gantt Charts    • Optimal (MIN)                         • File Alloc Map
 ```
 
@@ -77,12 +76,12 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
   * **FCFS (First-Come First-Served)**: Order-of-arrival scheduling preserving FIFO order with idle-interval detection.
   * **SJF (Shortest Job First)**: Non-preemptive scheduling dispatching the smallest available burst time.
   * **SRTF (Shortest Remaining Time First)**: Preemptive scheduling re-evaluating every time slice; coalesces adjacent process execution blocks for clean visualization.
-  * **Priority Scheduling**: Supports both **Preemptive** and **Non-preemptive** modes; strictly adheres to UNIX convention (lower numeric integer = higher scheduling priority).
-  * **Round Robin (RR)**: Time-sliced scheduling using an active ready queue; accurately handles process arrival at exact quantum expiration boundaries.
+  * **Priority Scheduling**: Supports both **Preemptive** and **Non-preemptive** modes; uses smaller numbers for higher priorities.
+  * **Round Robin (RR)**: Time-sliced scheduling using a FIFO ready queue ordered by arrival. Arrivals during a slice or at its boundary join the queue before the running process is requeued.
 * **Outputs**:
   * Auto-generated **dynamic ASCII Gantt chart** with explicit `[IDLE]` gap markers.
   * Formatted timing metrics table: Completion Time ($CT$), Turnaround Time ($TAT = CT - AT$), Waiting Time ($WT = TAT - BT$), Response Time ($RT = \text{First Start} - AT$), and respective averages.
-  * **Side-by-Side Comparative Benchmark**: Evaluates all 5 algorithms on identical process workloads.
+  * **Side-by-Side Comparative Benchmark**: Compares FCFS, SJF, SRTF, non-preemptive Priority, and Round Robin on the same workload.
 
 ### 2. Memory Management & Virtual Memory
 * **Contiguous Partition Allocation**:
@@ -101,10 +100,10 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
 * **Banker's Safety Algorithm (Avoidance)**:
   * Dynamic vector/matrix inputs: Available ($1 \times R$), Allocation ($P \times R$), Max Demand ($P \times R$).
   * Automated calculation of Need Matrix ($\text{Need}_{ij} = \text{Max}_{ij} - \text{Alloc}_{ij}$).
-  * Step-by-step Work vector expansion; discovers and outputs guaranteed Safe Execution Sequences or isolates deadlocked sets.
+  * Shows each update to the Work vector and reports a safe sequence or an unsafe state.
 * **Deadlock Detection Routine**:
   * Multiple-instance resource model utilizing Allocation and Current Request matrices.
-  * Distinct from avoidance: detects circular waiting dependencies in already-allocated system states.
+  * Identifies processes that cannot finish and release their held resources under the current requests.
 * **Process Synchronization Simulation**:
   * Interactive **Bounded-Buffer Producer-Consumer** demonstration.
   * Visualizes counting semaphores (`empty`, `full`) and binary mutual exclusion lock (`mutex`).
@@ -119,27 +118,28 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
   * **C-SCAN (Circular SCAN)**: Unidirectional sweep, wraps directly to opposite boundary, and resumes.
   * **LOOK**: Bidirectional sweep reversing at the last pending request without traveling to unused physical boundaries.
 * **Outputs**:
-  * Step-by-step seek sequence ($H_0 \to H_1 \to H_2 \dots$), per-hop distance calculations ($|H_i - H_{i-1}|$), total head travel, and average seek time.
+  * Step-by-step seek sequence ($H_0 \to H_1 \to H_2 \dots$), per-hop distance calculations ($|H_i - H_{i-1}|$), total head travel, and average movement per request.
 * **File Allocation Simulation**:
   * **Contiguous Allocation**: Start block + continuous run; detects and highlights external fragmentation failures when fragmented free space exists.
   * **Linked Allocation**: Linked block chains; eliminates external fragmentation and illustrates pointer metadata overhead.
   * **Indexed Allocation**: Dedicated index blocks pointing to data blocks; models direct-access indexing.
-  * Interactive 32-block visual disk map with file allocation table and file deletion capabilities.
+  * A 32-block disk map and directory support allocation and deletion. File names must be unique and nonempty. The name `FREE` and the prefix `IDX_` are reserved.
 
 ### 5. Live Linux Host System Monitor
-* **Safe Read-Only Telemetry**:
-  * Host Uptime, Load Averages, and Core Counts via `/proc/uptime` and `/proc/cpuinfo`.
-  * Physical RAM and Swap usage via `free -h` and `/proc/meminfo`.
+* **Host metrics and process inspection**:
+  * Uptime and load averages from `uptime`, with Linux CPU details from `/proc/cpuinfo`.
+  * RAM and swap usage from `free -h`, with a RAM summary from `/proc/meminfo` as a fallback.
   * Filesystem partitions, mountpoints, and block devices via `df -h` and `lsblk`.
   * Top process inspectors (Top 15 CPU consumers, Top 15 Memory consumers, name filter).
-  * Protected process termination utility: forbids targeting PID 1 or self, requiring explicit double confirmation.
+  * The process inspector also offers an optional SIGTERM action. It blocks PID 1 and the simulator's own process and asks for confirmation before sending the signal.
 
 ### 6. Comparative Benchmarking & Reporting
-* **Universal CSV Schema**: Automatically appends every simulation run to `reports/simulations.csv`:
+* **CSV summaries** for CPU scheduling, memory allocation and paging, Banker’s safety checks, deadlock detection, and individual disk scheduling runs are written to `reports/simulations.csv`. The report browser shows the latest 15 records.
   ```csv
   timestamp,module,algorithm,input_summary,result_summary,notes
   ```
-* **Detailed Execution Traces**: Writes human-readable step-by-step audit logs to `reports/YYYYMMDD_HHMMSS_<module>_<algo>.txt`.
+
+* **Detailed FCFS traces** are saved to `reports/YYYYMMDD_HHMMSS_cpu_FCFS.txt` and can be opened from the report browser.
 
 ---
 
@@ -148,7 +148,7 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
 ```mermaid
 flowchart TD
     User([User Terminal]) --> Main["main.sh (Main Controller)"]
-    
+
     subgraph SharedLibraries ["Core Libraries (lib/)"]
         Input["lib/input.sh<br/>(Validation & Safe Readers)"]
         Display["lib/display.sh<br/>(ASCII Tables & Gantt Renderer)"]
@@ -163,7 +163,7 @@ flowchart TD
         CPU["modules/cpu/<br/>FCFS, SJF, SRTF, Priority, RR"]
         MEM["modules/memory/<br/>First/Best/Worst Fit, FIFO/LRU/Optimal"]
         SAFE["modules/safety/<br/>Banker's, Detection, Producer-Consumer"]
-        DISK["modules/storage/<br/>FCFS, SSTF, SCAN, LOOK, File Maps"]
+        DISK["modules/storage/<br/>FCFS, SSTF, SCAN, C-SCAN, LOOK, File Maps"]
     end
 
     subgraph HostMonitoring ["Host Introspection"]
@@ -180,12 +180,12 @@ flowchart TD
     MEM --> Display
     SAFE --> Display
     DISK --> Display
-    
+
     CPU --> Report
     MEM --> Report
     SAFE --> Report
     DISK --> Report
-    
+
     Report --> Storage[("reports/simulations.csv<br/>reports/*.txt")]
 ```
 
@@ -222,21 +222,22 @@ OS-Resource-Management/
 │   │   ├── menu.sh               # Storage submenu
 │   │   ├── disk.sh               # FCFS, SSTF, SCAN, C-SCAN, LOOK seek movement
 │   │   └── file_allocation.sh    # Contiguous, Linked & Indexed file simulators
-│   └── system_monitor.sh         # Module 5: Read-only live host monitor
+│   └── system_monitor.sh         # Module 5: Live Linux host and process monitor
 ├── tests/
 │   └── test_runner.sh            # Automated verification test suite (27 checks)
 ├── reports/                      # Auto-generated CSV files and detailed text traces
 ├── docs/
 │   ├── ARCHITECTURE.md           # Formal architectural blueprint & module contracts
 │   └── VIVA_PREPARATION.md       # 15+ Viva questions, talking points, and derivations
-└── README.md                     # Comprehensive project documentation
+├── LICENSE                       # MIT license
+└── README.md                     # Project documentation
 ```
 
 ---
 
 ## 👥 Team Workstream Distribution
 
-To ensure genuine, verifiable academic collaboration, the codebase is partitioned into four equal workstreams:
+To ensure genuine, verifiable academic collaboration, the codebase is organized into four workstreams:
 
 | Workstream | Module Ownership | Core Deliverables & Definition of Done |
 |---|---|---|
@@ -250,27 +251,22 @@ To ensure genuine, verifiable academic collaboration, the codebase is partitione
 ## 💻 Installation & Quick Start
 
 ### Prerequisites
-- **Bash 4.4+** (Ubuntu/Debian, Fedora, Arch, WSL, macOS, or Git Bash)
-- Standard core utilities: `awk`, `sed`, `grep`, `column`, `date` (pre-installed on virtually all Linux distributions)
+- Bash 4.4+ and standard utilities such as `awk`, `sort`, `grep`, and `date`. The report browser uses `column` when available.
+- The simulator and tests were verified on Linux with Bash 5.2. Full host monitoring uses Linux interfaces such as `/proc` and utilities such as `ps`, `free`, `df`, and `lsblk`. Missing block-device data is shown as unavailable.
 
 ### Cloning & Running
 ```bash
-# 1. Clone the repository
 git clone https://github.com/tejapampana09/OS-Resource-Management.git
 cd OS-Resource-Management
 
-# 2. Grant execute permissions
-chmod +x main.sh config.sh lib/*.sh modules/**/*.sh modules/*.sh tests/*.sh
-
-# 3. Launch the interactive application
-./main.sh
+bash main.sh
 ```
 
-### ⚡ WSL / Windows Environment Note
-If you are developing on Windows with WSL, navigate to your project mountpoint in your WSL terminal before running:
+### WSL / Windows Environment Note
+On Windows, open a Linux terminal through WSL and run the quick-start commands there. For an existing checkout on the Windows drive, use its WSL path.
 ```bash
 cd "/mnt/c/Users/<YourUsername>/path/to/OS-Resource-Management"
-./main.sh
+bash main.sh
 ```
 
 ---
@@ -280,12 +276,12 @@ cd "/mnt/c/Users/<YourUsername>/path/to/OS-Resource-Management"
 ### 1. CPU Scheduling: ASCII Gantt Chart & Timing Table
 ```text
 Execution Results (FCFS)
-PID      Arrival (AT) Burst (BT) Completion (CT) Turnaround (TAT) Waiting (WT)  Response (RT) 
+PID      Arrival (AT) Burst (BT) Completion (CT) Turnaround (TAT) Waiting (WT)  Response (RT)
 -----------------------------------------------------------------------------------------------
-P1       0            5          5               5                0             0             
-P2       1            3          8               7                4             4             
-P3       2            8          16              14               6             6             
-P4       3            6          22              19               13            13            
+P1       0            5          5               5                0             0
+P2       1            3          8               7                4             4
+P3       2            8          16              14               6             6
+P4       3            6          22              19               13            13
 -----------------------------------------------------------------------------------------------
 Average Turnaround Time (TAT): 11.25
 Average Waiting Time    (WT) : 5.75
@@ -301,15 +297,15 @@ Execution Gantt Chart:
 ### 2. Page Replacement: Step-by-Step Frame Trace
 ```text
 Page Replacement Trace (FIFO - 3 Frames)
-Step   | Ref Page | Frames    | Status  
+Step   | Ref Page | Frames    | Status
 --------------------------------------------
-1      | 7        | 7 - -     | FAULT   
-2      | 0        | 7 0 -     | FAULT   
-3      | 1        | 7 0 1     | FAULT   
-4      | 2        | 2 0 1     | FAULT   
-5      | 0        | 2 0 1     | HIT     
-6      | 3        | 2 3 1     | FAULT   
-7      | 0        | 2 3 0     | FAULT   
+1      | 7        | 7 - -     | FAULT
+2      | 0        | 7 0 -     | FAULT
+3      | 1        | 7 0 1     | FAULT
+4      | 2        | 2 0 1     | FAULT
+5      | 0        | 2 0 1     | HIT
+6      | 3        | 2 3 1     | FAULT
+7      | 0        | 2 3 0     | FAULT
 --------------------------------------------
 Total References : 20
 Page Hits        : 5
@@ -338,17 +334,17 @@ Initial Head: 53 | Direction: Up | Max Cylinder: 199
 Head Travel Sequence:
   53 -> 65 -> 67 -> 98 -> 122 -> 124 -> 183 -> 199 -> 37 -> 14
 
-Step   | From Cylinder    | To Cylinder      | Seek Distance   
+Step   | From Cylinder    | To Cylinder      | Seek Distance
 -----------------------------------------------------------------
-1      | 53               | 65               | 12              
-2      | 65               | 67               | 2               
-3      | 67               | 98               | 31              
-4      | 98               | 122              | 24              
-5      | 122              | 124              | 2               
-6      | 124              | 183              | 59              
-7      | 183              | 199              | 16              
-8      | 199              | 37               | 162             
-9      | 37               | 14               | 23              
+1      | 53               | 65               | 12
+2      | 65               | 67               | 2
+3      | 67               | 98               | 31
+4      | 98               | 122              | 24
+5      | 122              | 124              | 2
+6      | 124              | 183              | 59
+7      | 183              | 199              | 16
+8      | 199              | 37               | 162
+9      | 37               | 14               | 23
 -----------------------------------------------------------------
 Total Head Movement: 331 cylinders
 Average Seek Time  : 41.38 cylinders/request
@@ -358,7 +354,7 @@ Average Seek Time  : 41.38 cylinders/request
 
 ## 🧪 Automated Testing & Acceptance Criteria
 
-The test runner [`tests/test_runner.sh`](./tests/test_runner.sh) executes 27 automated acceptance checks covering textbook scenarios and boundary edge cases:
+Run the 27 textbook and regression checks from the repository root.
 
 ```bash
 bash tests/test_runner.sh
@@ -396,7 +392,7 @@ bash tests/test_runner.sh
 | `TC-26` | **Input** | Tab-separated leading-zero decimals | `8 10` | ✅ PASS |
 | `TC-27` | **Reports** | Recent CSV record limit | `15` Records | ✅ PASS |
 
-**Result: 27 Passed, 0 Failed (100% Pass Rate)**
+**Verified result on Linux with Bash 5.2:** 27 passed, 0 failed.
 
 ---
 
@@ -429,11 +425,9 @@ bash tests/test_runner.sh
 
 ## 💡 Design Highlights & Engineering Principles
 
-- **Zero External Compilers**: Runs out-of-the-box on standard Bash without requiring GCC, Python, or Node.js.
-- **Fail-Safe Input Handling**: Loops until valid input is received, rejecting negative numbers, non-integers, empty strings, and out-of-range bounds without crashing.
-- **Strict Variable Scoping**: Functions utilize `local` variables and quote all array expansions to prevent word splitting and namespace collisions.
-- **Portable Host Telemetry**: Checks utility availability before running commands; gracefully falls back to `/proc` when tools like `free` or `lsblk` are omitted in lightweight container environments.
-- **Non-Destructive Operations**: Prohibits killing system critical processes (PID 1, init, or the current shell) and enforces double-confirmation guards.
+- The simulator runs with Bash and command-line utilities.
+- Numeric prompts normalize leading-zero decimal values and reject malformed, overflowing, or out-of-range input.
+- Each simulation module has its own menu and shares input, display, and reporting utilities.
 
 ---
 
