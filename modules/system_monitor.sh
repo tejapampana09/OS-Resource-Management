@@ -128,12 +128,14 @@ show_live_processes() {
                 return 0
             fi
 
-            if (( t_pid == $ )); then
+            if (( t_pid == BASHPID )); then
                 msg_error "Cannot terminate the simulator process (${t_pid})."
                 pause_screen
                 return 0
             fi
-            if [[ "$PPID" =~ ^[0-9]+$ ]] && (( t_pid == PPID )); then
+            local parent_pid
+            parent_pid=$(ps -o ppid= -p "$BASHPID" 2>/dev/null | tr -d '[:space:]')
+            if [[ "$parent_pid" =~ ^[0-9]+$ ]] && (( t_pid == parent_pid )); then
                 msg_error "Cannot terminate the parent terminal or launcher process (${t_pid})."
                 pause_screen
                 return 0
