@@ -272,10 +272,11 @@ assert_equal "Synchronization Rejects Inconsistent Semaphore Counts" "1" "$statu
 show_live_processes < <(printf '4\n1\n') > "$test_dir/monitor_pid1.log"
 if grep -q "Cannot terminate PID 1" "$test_dir/monitor_pid1.log"; then status=0; else status=1; fi
 assert_equal "System Monitor Protects PID 1" "0" "$status"
-show_live_processes < <(printf '4\n%s\n' "$BASHPID") > "$test_dir/monitor_self.log"
+self_pid="$BASHPID"
+show_live_processes < <(printf '4\n%s\n' "$self_pid") > "$test_dir/monitor_self.log"
 if grep -q "Cannot terminate the simulator process" "$test_dir/monitor_self.log"; then status=0; else status=1; fi
 assert_equal "System Monitor Protects Its Own Process" "0" "$status"
-parent_pid=$(ps -o ppid= -p "$BASHPID" | tr -d '[:space:]')
+parent_pid=$(ps -o ppid= -p "$self_pid" | tr -d '[:space:]')
 show_live_processes < <(printf '4\n%s\n' "$parent_pid") > "$test_dir/monitor_parent.log"
 if grep -q "Cannot terminate the parent terminal" "$test_dir/monitor_parent.log"; then status=0; else status=1; fi
 assert_equal "System Monitor Protects Parent Terminal" "0" "$status"
