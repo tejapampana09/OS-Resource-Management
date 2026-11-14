@@ -4,7 +4,7 @@
 
 [![Bash Shell](https://img.shields.io/badge/Language-GNU%20Bash%204.4%2B-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/Verified%20on-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#-installation--quick-start)
-[![Tests](https://img.shields.io/badge/Acceptance%20Tests-Expanded%20Suite-blue?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
+[![Tests](https://img.shields.io/badge/Acceptance%20Tests-51%2F51%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
 [![Architecture](https://img.shields.io/badge/Architecture-Modular%20TUI-blue?style=for-the-badge)](#-system-architecture)
 [![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
 
@@ -48,7 +48,7 @@ Operating Systems concepts are often taught through isolated textbook problems, 
 The **OS Resource Management & Simulation Suite** solves this by delivering:
 1. **Interactive simulation** with Gantt charts, page-frame traces, allocation grids, and side-by-side algorithm comparisons.
 2. **Real-time Host Telemetry**: A safe, non-root inspection suite querying the host's actual CPU, process tables, RAM utilization, filesystem mountpoints, and block devices via `/proc` and Linux core utilities.
-3. **Automated Verification Harness**: A built-in test runner with 27 checks for textbook cases and regressions, using Bash and standard command-line utilities.
+3. **Automated Verification Harness**: A built-in automated test runner with 51 checks covering textbook cases, edge conditions, reporting, synchronization invariants, and process-safety guards, using Bash and standard command-line utilities.
 4. **Audit Logging**: Structured CSV records and timestamped execution logs for academic evaluation and reporting.
 
 ---
@@ -354,7 +354,7 @@ Average Seek Time  : 41.38 cylinders/request
 
 ## 🧪 Automated Testing & Acceptance Criteria
 
-Run the expanded algorithm, input-validation, reporting, synchronization-invariant, and host-safety regression suite from the repository root.
+Run the 51-case algorithm, input-validation, reporting, synchronization-invariant, and host-safety regression suite from the repository root. The named TC-01 to TC-27 scenarios below are supplemented by additional edge-case and safety checks.
 
 ```bash
 bash tests/test_runner.sh
