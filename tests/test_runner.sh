@@ -134,12 +134,22 @@ if run_page_replacement "fifo" 3 "1 -2 3" true > /dev/null 2>&1; then status=0; 
 assert_equal "Paging Rejects Negative Page Reference" "1" "$status"
 if run_page_replacement "fifo" 0 "1 2 3" true > /dev/null 2>&1; then status=0; else status=$?; fi
 assert_equal "Paging Rejects Zero Frames" "1" "$status"
+if run_page_replacement "fifo" 11 "1 2 3" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Paging Rejects Frames Above Configured Maximum" "1" "$status"
 
 # Test 2.4: Contiguous Memory Allocation
 export -a PRESET_BLOCKS=(100 500 200 300 600)
 export -a PRESET_PROCS=(212 417 112 426)
 run_memory_allocation_sim "best_fit" "fixed" "true" > /dev/null
 assert_equal "Memory Best Fit Allocated Process Count" "4" "$LAST_ALLOCATED_COUNT"
+run_memory_allocation_sim "first_fit" "fixed" "true" > /dev/null
+assert_equal "Memory First Fit Allocated Process Count" "3" "$LAST_ALLOCATED_COUNT"
+run_memory_allocation_sim "worst_fit" "fixed" "true" > /dev/null
+assert_equal "Memory Worst Fit Allocated Process Count" "3" "$LAST_ALLOCATED_COUNT"
+run_memory_allocation_sim "best_fit" "variable" "true" > /dev/null
+assert_equal "Memory Best Fit Variable Allocated Process Count" "4" "$LAST_ALLOCATED_COUNT"
+if run_memory_allocation_sim "unknown" "fixed" "true" > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Memory Rejects Unsupported Allocation Policy" "1" "$status"
 
 # ------------------------------------------------------------------------------
 # Test Suite 3: Deadlocks & Safety
