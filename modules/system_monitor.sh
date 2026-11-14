@@ -56,10 +56,11 @@ show_system_overview() {
     fi
 
     echo -e "\n${COLOR_BOLD}5. Block Storage Devices:${COLOR_RESET}"
-    if has_cmd lsblk; then
-        lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null || lsblk
+    local block_devices
+    if block_devices=$(lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null || lsblk 2>/dev/null); then
+        printf '%s\n' "$block_devices"
     else
-        echo -e "  ${COLOR_DIM}[N/A] lsblk not installed on minimal environment.${COLOR_RESET}"
+        echo -e "  ${COLOR_DIM}[N/A] Block device information unavailable on this host.${COLOR_RESET}"
     fi
 
     pause_screen
@@ -113,8 +114,9 @@ show_live_processes() {
             # Safe termination
             echo -ne "${COLOR_YELLOW}Enter PID to terminate: ${COLOR_RESET}"
             local t_pid
-            read -r t_pid
-            if ! is_positive_integer "$t_pid"; then
+            read -r t_pid || return 0
+            if ! normalize_integer "$t_pid" t_pid || ! is_positive_integer "$t_pid" ||
+                (( t_pid > 2147483647 )); then
                 msg_error "Invalid PID."
                 pause_screen
                 return 0

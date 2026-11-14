@@ -19,6 +19,11 @@ run_disk_algorithm() {
     local req_str="$5"
     local silent="${6:-false}"
 
+    if (( init_head < 0 || init_head > max_cyl )); then
+        msg_error "Initial head must be between 0 and ${max_cyl}."
+        return 1
+    fi
+
     local -a requests
     # shellcheck disable=SC2206
     requests=($req_str)
@@ -61,65 +66,43 @@ run_disk_algorithm() {
             done
             ;;
 
-        scan)
+        scan|c-scan|look)
             local -a left=() right=()
+            local req
             for req in "${requests[@]}"; do
-                if (( req < init_head )); then left+=("$req"); else right+=("$req"); fi
+                if (( req < init_head )); then
+                    left+=("$req")
+                elif (( req > init_head )); then
+                    right+=("$req")
+                else
+                    sequence+=("$req")
+                fi
             done
-            # Sort left descending, right ascending
-            IFS=$'\n' left=($(sort -n -r <<<"${left[*]}")); IFS=' '
-            IFS=$'\n' right=($(sort -n <<<"${right[*]}")); IFS=' '
 
-            if [[ "$dir" == "up" ]]; then
-                for r in "${right[@]}"; do sequence+=("$r"); done
-                # Travels to disk upper boundary
-                sequence+=("$max_cyl")
-                for r in "${left[@]}"; do sequence+=("$r"); done
-            else
-                for r in "${left[@]}"; do sequence+=("$r"); done
-                # Travels to disk lower boundary (0)
-                sequence+=(0)
-                for r in "${right[@]}"; do sequence+=("$r"); done
+            local -a left_asc=() left_desc=() right_asc=() right_desc=()
+            if (( ${#left[@]} > 0 )); then
+                mapfile -t left_asc < <(printf '%s\n' "${left[@]}" | sort -n)
+                mapfile -t left_desc < <(printf '%s\n' "${left[@]}" | sort -nr)
             fi
-            ;;
-
-        c-scan)
-            local -a left=() right=()
-            for req in "${requests[@]}"; do
-                if (( req < init_head )); then left+=("$req"); else right+=("$req"); fi
-            done
-            IFS=$'\n' left=($(sort -n <<<"${left[*]}")); IFS=' '
-            IFS=$'\n' right=($(sort -n <<<"${right[*]}")); IFS=' '
-
-            if [[ "$dir" == "up" ]]; then
-                for r in "${right[@]}"; do sequence+=("$r"); done
-                sequence+=("$max_cyl")
-                sequence+=(0)
-                for r in "${left[@]}"; do sequence+=("$r"); done
-            else
-                IFS=$'\n' left=($(sort -n -r <<<"${left[*]}")); IFS=' '
-                IFS=$'\n' right=($(sort -n -r <<<"${right[*]}")); IFS=' '
-                for r in "${left[@]}"; do sequence+=("$r"); done
-                sequence+=(0)
-                sequence+=("$max_cyl")
-                for r in "${right[@]}"; do sequence+=("$r"); done
+            if (( ${#right[@]} > 0 )); then
+                mapfile -t right_asc < <(printf '%s\n' "${right[@]}" | sort -n)
+                mapfile -t right_desc < <(printf '%s\n' "${right[@]}" | sort -nr)
             fi
-            ;;
-
-        look)
-            local -a left=() right=()
-            for req in "${requests[@]}"; do
-                if (( req < init_head )); then left+=("$req"); else right+=("$req"); fi
-            done
-            IFS=$'\n' left=($(sort -n -r <<<"${left[*]}")); IFS=' '
-            IFS=$'\n' right=($(sort -n <<<"${right[*]}")); IFS=' '
 
             if [[ "$dir" == "up" ]]; then
-                for r in "${right[@]}"; do sequence+=("$r"); done
-                for r in "${left[@]}"; do sequence+=("$r"); done
+                sequence+=("${right_asc[@]}")
+                case "$algo" in
+                    scan) sequence+=("$max_cyl" "${left_desc[@]}") ;;
+                    c-scan) sequence+=("$max_cyl" 0 "${left_asc[@]}") ;;
+                    look) sequence+=("${left_desc[@]}") ;;
+                esac
             else
-                for r in "${left[@]}"; do sequence+=("$r"); done
-                for r in "${right[@]}"; do sequence+=("$r"); done
+                sequence+=("${left_desc[@]}")
+                case "$algo" in
+                    scan) sequence+=(0 "${right_asc[@]}") ;;
+                    c-scan) sequence+=(0 "$max_cyl" "${right_desc[@]}") ;;
+                    look) sequence+=("${right_asc[@]}") ;;
+                esac
             fi
             ;;
     esac
@@ -175,15 +158,17 @@ run_disk_interactive() {
                 "Models track seek operations, boundary handling, and total head displacement"
 
     local init_head max_cyl dir="up"
-    read_int "Enter initial head position" init_head 0 5000 53 || return 1
     read_int "Enter max disk cylinder (e.g., 199 for 0..199)" max_cyl 1 5000 199 || return 1
+    local default_head=53
+    (( default_head > max_cyl )) && default_head="$max_cyl"
+    read_int "Enter initial head position" init_head 0 "$max_cyl" "$default_head" || return 1
 
     if [[ "$algo" == "scan" || "$algo" == "c-scan" || "$algo" == "look" ]]; then
         echo -e "\nSelect Initial Head Direction:"
         echo "  [1] Towards higher cylinders (Up / Right)"
         echo "  [2] Towards lower cylinders (Down / Left)"
         local d_choice
-        read_int "Choice" d_choice 1 2 1
+        read_int "Choice" d_choice 1 2 1 || return 1
         if (( d_choice == 2 )); then dir="down"; fi
     fi
 
@@ -199,14 +184,16 @@ run_disk_comparative_benchmark() {
                 "Compare FCFS, SSTF, SCAN, C-SCAN, and LOOK on the exact same queue"
 
     local init_head max_cyl dir="up"
-    read_int "Enter initial head position" init_head 0 5000 50 || return 1
     read_int "Enter max disk cylinder" max_cyl 1 5000 199 || return 1
+    local default_head=50
+    (( default_head > max_cyl )) && default_head="$max_cyl"
+    read_int "Enter initial head position" init_head 0 "$max_cyl" "$default_head" || return 1
 
     echo -e "\nSelect Direction for SCAN/LOOK algorithms:"
     echo "  [1] Up (towards higher cylinders)"
     echo "  [2] Down (towards lower cylinders)"
     local d_choice
-    read_int "Choice" d_choice 1 2 1
+    read_int "Choice" d_choice 1 2 1 || return 1
     if (( d_choice == 2 )); then dir="down"; fi
 
     local -a reqs=()

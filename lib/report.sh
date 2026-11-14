@@ -67,13 +67,20 @@ view_saved_reports() {
     echo ""
 
     local choice
-    read_int "Select option" choice 0 3 1
+    read_int "Select option" choice 0 3 1 || return 0
 
     case "$choice" in
         1)
             show_banner "CSV Summary Records" "${REPORT_CSV}"
             if [[ -f "${REPORT_CSV}" ]]; then
-                column -s, -t < "${REPORT_CSV}" 2>/dev/null || cat "${REPORT_CSV}"
+                local recent_records
+                recent_records=$(awk 'NR == 1 { print; next }
+                    { records[(NR - 2) % 15] = $0 }
+                    END {
+                        start = (NR > 16) ? NR - 16 : 0
+                        for (i = start; i < NR - 1; i++) print records[i % 15]
+                    }' "${REPORT_CSV}")
+                column -s, -t <<< "$recent_records" 2>/dev/null || printf '%s\n' "$recent_records"
             else
                 echo "No CSV reports logged yet."
             fi
@@ -100,7 +107,7 @@ view_saved_reports() {
             echo ""
 
             local sel
-            read_int "Select file number to view" sel 0 "${#files[@]}" 0
+            read_int "Select file number to view" sel 0 "${#files[@]}" 0 || return 0
             if (( sel > 0 )); then
                 local selected_file="${files[$(( sel - 1 ))]}"
                 show_banner "Viewing Trace" "$(basename "${selected_file}")"

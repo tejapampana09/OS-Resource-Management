@@ -30,12 +30,39 @@ display_disk_map() {
         if [[ "$status" == "FREE" ]]; then
             printf "${COLOR_DIM}[ . ]${COLOR_RESET} "
         elif [[ "$status" =~ ^IDX_ ]]; then
-            printf "${COLOR_YELLOW}[${status:4:3}]${COLOR_RESET} "
+            printf '%b[%s]%b ' "$COLOR_YELLOW" "${status:4:3}" "$COLOR_RESET"
         else
-            printf "${COLOR_GREEN}[${status:0:3}]${COLOR_RESET} "
+            printf '%b[%s]%b ' "$COLOR_GREEN" "${status:0:3}" "$COLOR_RESET"
         fi
     done
     echo -e "\n"
+}
+
+# File names also identify block owners, so they must be unique and
+# distinct from the free-block marker and index-block prefix.
+read_file_name() {
+    local -n result="$1"
+    local example="$2"
+    local candidate existing=""
+    while true; do
+        echo -ne "${COLOR_CYAN}Enter File Name (e.g., ${example}): ${COLOR_RESET}"
+        read -r candidate || return 1
+        if [[ -z "$candidate" || "$candidate" == FREE || "$candidate" == IDX_* ]]; then
+            msg_error "Enter a non-empty file name. FREE and the IDX_ prefix are reserved."
+            continue
+        fi
+
+        for existing in "${FILE_NAMES[@]}"; do
+            [[ "$existing" == "$candidate" ]] && break
+        done
+        if [[ "$existing" == "$candidate" ]]; then
+            msg_error "A file named '${candidate}' already exists."
+            continue
+        fi
+
+        result="$candidate"
+        return 0
+    done
 }
 
 run_contiguous_allocation_demo() {
@@ -44,8 +71,7 @@ run_contiguous_allocation_demo() {
     display_disk_map
 
     local fname fsize
-    echo -ne "${COLOR_CYAN}Enter File Name (e.g., fileA): ${COLOR_RESET}"
-    read -r fname
+    read_file_name fname fileA || return 1
     read_int "Enter file size in blocks" fsize 1 "$TOTAL_DISK_BLOCKS" 4 || return 1
 
     # Search for a contiguous chunk of fsize FREE blocks
@@ -96,8 +122,7 @@ run_linked_allocation_demo() {
     display_disk_map
 
     local fname fsize
-    echo -ne "${COLOR_CYAN}Enter File Name (e.g., fileB): ${COLOR_RESET}"
-    read -r fname
+    read_file_name fname fileB || return 1
     read_int "Enter file size in blocks" fsize 1 "$TOTAL_DISK_BLOCKS" 4 || return 1
 
     # Find any fsize free blocks
@@ -140,8 +165,7 @@ run_indexed_allocation_demo() {
     display_disk_map
 
     local fname fsize
-    echo -ne "${COLOR_CYAN}Enter File Name (e.g., fileC): ${COLOR_RESET}"
-    read -r fname
+    read_file_name fname fileC || return 1
     read_int "Enter data size in blocks" fsize 1 "$(( TOTAL_DISK_BLOCKS - 1 ))" 3 || return 1
 
     local total_needed=$(( fsize + 1 )) # 1 index block + fsize data blocks
@@ -198,10 +222,10 @@ list_and_delete_files() {
 
     echo -e "\nOptions: [1] Delete a File  [0] Back"
     local opt
-    read_int "Choice" opt 0 1 0
+    read_int "Choice" opt 0 1 0 || return 1
     if (( opt == 1 )); then
         local del_idx
-        read_int "Enter file number to delete" del_idx 1 "${#FILE_NAMES[@]}" 1
+        read_int "Enter file number to delete" del_idx 1 "${#FILE_NAMES[@]}" 1 || return 1
         local target_name="${FILE_NAMES[$(( del_idx - 1 ))]}"
 
         # Free all blocks owned by target_name

@@ -40,18 +40,30 @@ run_cpu_round_robin() {
 
     local -a rem_burst=()
     local -a first_start=()
-    local -a in_queue=()
     local -a ct=() tat=() wt=() rt=()
 
     for (( i=0; i<num_proc; i++ )); do
         rem_burst+=("${bursts[i]}")
         first_start+=(-1)
-        in_queue+=(0)
         ct+=(0); tat+=(0); wt+=(0); rt+=(0)
     done
 
-    # Sort initial arrivals to manage arrival events
+    # Sort process indices by arrival time, preserving input order for ties.
+    local -a arrival_order=()
+    local idx pos prev
+    for (( idx=0; idx<num_proc; idx++ )); do
+        pos=${#arrival_order[@]}
+        while (( pos > 0 )); do
+            prev=${arrival_order[pos-1]}
+            (( arrivals[prev] <= arrivals[idx] )) && break
+            arrival_order[pos]="$prev"
+            (( pos-- ))
+        done
+        arrival_order[pos]="$idx"
+    done
+
     local -a ready_queue=()
+    local next_arrival_idx=0
     local current_time=0
     local completed_count=0
 
@@ -59,14 +71,15 @@ run_cpu_round_robin() {
     local -a g_starts=()
     local -a g_ends=()
 
-    # Function to enqueue all arrived processes up to current_time
+    # Append new arrivals in chronological order before requeueing a process.
     enqueue_arrivals() {
         local up_to="$1"
-        for (( i=0; i<num_proc; i++ )); do
-            if (( arrivals[i] <= up_to && in_queue[i] == 0 && rem_burst[i] > 0 )); then
-                ready_queue+=("$i")
-                in_queue[i]=1
-            fi
+        local process_idx
+        while (( next_arrival_idx < num_proc )); do
+            process_idx=${arrival_order[next_arrival_idx]}
+            (( arrivals[process_idx] > up_to )) && break
+            ready_queue+=("$process_idx")
+            (( next_arrival_idx++ ))
         done
     }
 
@@ -75,13 +88,7 @@ run_cpu_round_robin() {
 
     while (( completed_count < num_proc )); do
         if (( ${#ready_queue[@]} == 0 )); then
-            # Queue empty: find nearest arrival
-            local next_arrival=9999999
-            for (( i=0; i<num_proc; i++ )); do
-                if (( rem_burst[i] > 0 && arrivals[i] < next_arrival )); then
-                    next_arrival="${arrivals[i]}"
-                fi
-            done
+            local next_arrival="${arrivals[arrival_order[next_arrival_idx]]}"
             g_labels+=("IDLE")
             g_starts+=("$current_time")
             g_ends+=("$next_arrival")

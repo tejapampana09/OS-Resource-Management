@@ -18,7 +18,29 @@ is_non_negative_integer() {
 # Check if a value is a positive integer (> 0)
 is_positive_integer() {
     local val="$1"
-    [[ "$val" =~ ^[0-9]+$ ]] && (( val > 0 ))
+    [[ "$val" =~ ^[0-9]+$ ]] && [[ "$val" =~ [1-9] ]]
+}
+
+# Normalize decimal input before it enters Bash arithmetic.
+normalize_integer() {
+    local LC_ALL=C
+    local digits="${1#-}"
+    local limit=9223372036854775807
+
+    is_integer "$1" || return 1
+    digits="${digits#"${digits%%[!0]*}"}"
+    digits="${digits:-0}"
+    if [[ "$1" == -* && "$digits" != 0 ]]; then
+        limit=9223372036854775808
+    fi
+    if (( ${#digits} > ${#limit} )) ||
+        { (( ${#digits} == ${#limit} )) && [[ "$digits" > "$limit" ]]; }; then
+        return 1
+    fi
+    if [[ "$1" == -* && "$digits" != 0 ]]; then
+        digits="-$digits"
+    fi
+    printf -v "$2" '%s' "$digits"
 }
 
 # Prompt user for an integer with bounds and optional default
@@ -46,8 +68,8 @@ read_int() {
             continue
         fi
 
-        if ! is_integer "$user_input"; then
-            echo -e "${COLOR_RED}Error: Value must be a valid integer.${COLOR_RESET}"
+        if ! normalize_integer "$user_input" user_input; then
+            echo -e "${COLOR_RED}Error: Value must be a valid integer within Bash's integer range.${COLOR_RESET}"
             continue
         fi
 
@@ -76,6 +98,7 @@ read_int_array() {
     local expected_count="${5:-}"
     local input_str
     local -a parsed
+    local -n destination="$array_var"
 
     while true; do
         echo -ne "${COLOR_CYAN}${prompt}: ${COLOR_RESET}"
@@ -86,19 +109,21 @@ read_int_array() {
             continue
         fi
 
-        # Split string by whitespace
-        # shellcheck disable=SC2206
-        parsed=($input_str)
+        IFS=$' \t' read -r -a parsed <<< "$input_str"
+        if (( ${#parsed[@]} == 0 )); then
+            echo -e "${COLOR_RED}Error: Input cannot be empty.${COLOR_RESET}"
+            continue
+        fi
 
         if [[ -n "$expected_count" ]] && (( ${#parsed[@]} != expected_count )); then
             echo -e "${COLOR_RED}Error: Expected exactly ${expected_count} values, got ${#parsed[@]}.${COLOR_RESET}"
             continue
         fi
 
-        local valid=true
-        for val in "${parsed[@]}"; do
-            if ! is_integer "$val"; then
-                echo -e "${COLOR_RED}Error: '${val}' is not an integer.${COLOR_RESET}"
+        local valid=true idx val
+        for idx in "${!parsed[@]}"; do
+            if ! normalize_integer "${parsed[idx]}" val; then
+                echo -e "${COLOR_RED}Error: '${parsed[idx]}' is not a valid integer within Bash's integer range.${COLOR_RESET}"
                 valid=false
                 break
             fi
@@ -112,10 +137,11 @@ read_int_array() {
                 valid=false
                 break
             fi
+            parsed[idx]="$val"
         done
 
         if $valid; then
-            eval "${array_var}=(\"\${parsed[@]}\")"
+            destination=("${parsed[@]}")
             return 0
         fi
     done

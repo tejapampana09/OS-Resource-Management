@@ -4,7 +4,7 @@
 
 [![Bash Shell](https://img.shields.io/badge/Language-GNU%20Bash%205.0+-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL%20%7C%20macOS-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://ubuntu.com/wsl)
-[![Tests](https://img.shields.io/badge/Acceptance%20Tests-19%2F19%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
+[![Tests](https://img.shields.io/badge/Acceptance%20Tests-27%2F27%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
 [![Architecture](https://img.shields.io/badge/Architecture-Modular%20TUI-blue?style=for-the-badge)](#-system-architecture)
 [![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
 
@@ -49,7 +49,7 @@ Operating Systems concepts are often taught through isolated textbook problems, 
 The **OS Resource Management & Simulation Suite** solves this by delivering:
 1. **Interactive Simulation Engine**: Mathematically accurate models for all major OS algorithms with dynamic ASCII Gantt charts, step-by-step frame traces, allocation grids, and side-by-side performance comparisons.
 2. **Real-time Host Telemetry**: A safe, non-root inspection suite querying the host's actual CPU, process tables, RAM utilization, filesystem mountpoints, and block devices via `/proc` and Linux core utilities.
-3. **Automated Verification Harness**: A built-in test runner validating 19 textbook test cases with zero external dependencies.
+3. **Automated Verification Harness**: A built-in test runner validating 27 assertions for textbook cases and regressions with zero external dependencies.
 4. **Audit Logging**: Structured CSV records and timestamped execution logs for academic evaluation and reporting.
 
 ---
@@ -224,7 +224,7 @@ OS-Resource-Management/
 │   │   └── file_allocation.sh    # Contiguous, Linked & Indexed file simulators
 │   └── system_monitor.sh         # Module 5: Read-only live host monitor
 ├── tests/
-│   └── test_runner.sh            # Automated verification test suite (19 test cases)
+│   └── test_runner.sh            # Automated verification test suite (27 checks)
 ├── reports/                      # Auto-generated CSV files and detailed text traces
 ├── docs/
 │   ├── ARCHITECTURE.md           # Formal architectural blueprint & module contracts
@@ -358,7 +358,7 @@ Average Seek Time  : 41.38 cylinders/request
 
 ## 🧪 Automated Testing & Acceptance Criteria
 
-The test runner [`tests/test_runner.sh`](./tests/test_runner.sh) executes 19 automated acceptance tests covering textbook scenarios and boundary edge cases:
+The test runner [`tests/test_runner.sh`](./tests/test_runner.sh) executes 27 automated acceptance checks covering textbook scenarios and boundary edge cases:
 
 ```bash
 bash tests/test_runner.sh
@@ -387,8 +387,16 @@ bash tests/test_runner.sh
 | `TC-17` | **Storage** | SSTF Disk Scheduling (Head=53, 8 Requests) | `236` Cylinders | ✅ PASS |
 | `TC-18` | **Storage** | SCAN Disk Scheduling (Head=53, Direction=Up) | `331` Cylinders | ✅ PASS |
 | `TC-19` | **Storage** | LOOK Disk Scheduling (Head=53, Reversing at 183) | `299` Cylinders | ✅ PASS |
+| `TC-20` | **CPU** | Round Robin arrivals entered out of order | Avg WT = `3.00` | ✅ PASS |
+| `TC-21` | **Storage** | LOOK downward with a request at the initial head | `50 → 50 → 40 → 60` | ✅ PASS |
+| `TC-22` | **Storage** | Initial head outside disk bounds | Rejected | ✅ PASS |
+| `TC-23` | **Storage** | Duplicate and reserved filenames | Rejected | ✅ PASS |
+| `TC-24` | **Storage** | Deleting one file preserves another file's blocks | Preserved | ✅ PASS |
+| `TC-25` | **Input** | Overflow followed by leading-zero decimal | `8` | ✅ PASS |
+| `TC-26` | **Input** | Tab-separated leading-zero decimals | `8 10` | ✅ PASS |
+| `TC-27` | **Reports** | Recent CSV record limit | `15` Records | ✅ PASS |
 
-**Result: 19 Passed, 0 Failed (100% Pass Rate)**
+**Result: 27 Passed, 0 Failed (100% Pass Rate)**
 
 ---
 
