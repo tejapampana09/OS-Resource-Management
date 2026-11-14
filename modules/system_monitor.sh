@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# modules/system_monitor.sh - Read-only Live Host Resource Monitoring
+# modules/system_monitor.sh - Live Host Resource Monitoring and Process Inspection
 # ==============================================================================
 
 # Check utility availability helper
@@ -169,7 +169,7 @@ show_live_processes() {
 system_monitor_menu() {
     while true; do
         show_banner "Module 5: Live System Resource Monitor" \
-                    "Read-only metrics from Linux Host (/proc, ps, free, df, uptime)"
+                    "Live Linux host metrics with guarded optional process termination"
 
         echo -e "${COLOR_BOLD}1. Host Overview & Hardware Stats (CPU, RAM, Disks)${COLOR_RESET}"
         echo -e "${COLOR_BOLD}2. Process Inspector & Utilization Tables${COLOR_RESET}"
