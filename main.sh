@@ -47,7 +47,7 @@ main_menu() {
         echo -e "   ${COLOR_DIM}(FCFS, SSTF, SCAN, C-SCAN, LOOK, Contiguous, Linked & Indexed Models)${COLOR_RESET}"
         echo ""
         echo -e "${COLOR_BOLD}5. Live Linux Host System Monitor${COLOR_RESET}"
-        echo -e "   ${COLOR_DIM}(Read-only live inspection of CPU, Memory, Disks, and Processes)${COLOR_RESET}"
+        echo -e "   ${COLOR_DIM}(Live host metrics and guarded process controls)${COLOR_RESET}"
         echo ""
         echo -e "${COLOR_BOLD}6. View Saved Simulation Reports & CSV Logs${COLOR_RESET}"
         echo -e "   ${COLOR_DIM}(Browse historical runs, view comparative tables and text traces)${COLOR_RESET}"
