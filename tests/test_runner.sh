@@ -11,6 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${SCRIPT_DIR}"
 
 source "${SCRIPT_DIR}/config.sh"
+test_dir=$(mktemp -d) || exit 1
+trap 'rm -rf -- "$test_dir"' EXIT
+REPORTS_DIR="$test_dir"
+REPORT_CSV="$test_dir/simulations.csv"
 source "${SCRIPT_DIR}/lib/input.sh"
 source "${SCRIPT_DIR}/lib/display.sh"
 source "${SCRIPT_DIR}/lib/report.sh"
@@ -24,6 +28,7 @@ source "${SCRIPT_DIR}/modules/memory/paging.sh"
 source "${SCRIPT_DIR}/modules/safety/banker.sh"
 source "${SCRIPT_DIR}/modules/safety/deadlock.sh"
 source "${SCRIPT_DIR}/modules/storage/disk.sh"
+source "${SCRIPT_DIR}/modules/storage/file_allocation.sh"
 
 TOTAL_TESTS=0
 PASSED_TESTS=0
@@ -91,6 +96,10 @@ run_cpu_round_robin "--preset" 2 "P1 P2" "0 2" "4 2" 2 > /dev/null
 assert_equal "CPU Round Robin Boundary Queueing (Avg WT)" "1.00" "$LAST_AVG_WT"
 assert_equal "CPU Round Robin Boundary Queueing (Avg TAT)" "4.00" "$LAST_AVG_TAT"
 
+# P3 arrives before P2 during P1's first slice, despite being entered later.
+run_cpu_round_robin "--preset" 3 "P1 P2 P3" "0 3 1" "5 3 1" 4 > /dev/null
+assert_equal "CPU Round Robin Chronological Arrivals (Avg WT)" "3.00" "$LAST_AVG_WT"
+
 # ------------------------------------------------------------------------------
 # Test Suite 2: Memory Management & Paging
 # ------------------------------------------------------------------------------
@@ -124,24 +133,24 @@ assert_equal "Memory Best Fit Allocated Process Count" "4" "$LAST_ALLOCATED_COUN
 print_section "3. Deadlock Algorithms Known-Answer Tests"
 
 # Test 3.1: Banker's Algorithm Safe State
-run_bankers_algorithm "safe" > /tmp/banker_safe.log
-if grep -q "\[SAFE STATE\]" /tmp/banker_safe.log; then
+run_bankers_algorithm "safe" > "$test_dir/banker_safe.log"
+if grep -q "\[SAFE STATE\]" "$test_dir/banker_safe.log"; then
     assert_equal "Banker's Algorithm on Safe State" "SAFE" "SAFE"
 else
     assert_equal "Banker's Algorithm on Safe State" "SAFE" "UNSAFE"
 fi
 
 # Test 3.2: Banker's Algorithm Unsafe State
-run_bankers_algorithm "unsafe" > /tmp/banker_unsafe.log
-if grep -q "\[UNSAFE STATE\]" /tmp/banker_unsafe.log; then
+run_bankers_algorithm "unsafe" > "$test_dir/banker_unsafe.log"
+if grep -q "\[UNSAFE STATE\]" "$test_dir/banker_unsafe.log"; then
     assert_equal "Banker's Algorithm on Unsafe State" "UNSAFE" "UNSAFE"
 else
     assert_equal "Banker's Algorithm on Unsafe State" "UNSAFE" "SAFE"
 fi
 
 # Test 3.3: Deadlock Detection on Deadlocked State
-run_deadlock_detection "deadlocked" > /tmp/deadlock_det.log
-if grep -q "\[DEADLOCK DETECTED!\]" /tmp/deadlock_det.log; then
+run_deadlock_detection "deadlocked" > "$test_dir/deadlock_det.log"
+if grep -q "\[DEADLOCK DETECTED!\]" "$test_dir/deadlock_det.log"; then
     assert_equal "Deadlock Detection Cycle Test" "DEADLOCKED" "DEADLOCKED"
 else
     assert_equal "Deadlock Detection Cycle Test" "DEADLOCKED" "NO_DEADLOCK"
@@ -173,6 +182,31 @@ assert_equal "Disk SCAN Total Head Movement" "331" "$LAST_DISK_SEEK"
 # Total LOOK Seek = (183 - 53) + (183 - 14) = 130 + 169 = 299
 run_disk_algorithm "look" 53 199 "up" "98 183 37 122 14 124 65 67" true
 assert_equal "Disk LOOK Total Head Movement" "299" "$LAST_DISK_SEEK"
+
+run_disk_algorithm "look" 50 199 "down" "50 40 60" false > "$test_dir/look.log"
+assert_equal "Disk LOOK Down Services Initial Head First" "50 -> 50 -> 40 -> 60" "$(awk '/ -> / { sub(/^ +/, ""); print }' "$test_dir/look.log")"
+run_disk_algorithm "fcfs" 250 199 "up" "10" true > /dev/null
+assert_equal "Disk Rejects Head Beyond Final Cylinder" "1" "$?"
+
+print_section "5. File Allocation and Input Regression Tests"
+
+init_file_system
+run_contiguous_allocation_demo <<< $'same\n2\n' > /dev/null
+run_linked_allocation_demo <<< $'same\nFREE\nIDX_other\nother\n2\n' > /dev/null
+assert_equal "File Allocation Rejects Duplicate and Reserved Names" "same other" "${FILE_NAMES[*]}"
+list_and_delete_files <<< $'1\n1\n' > /dev/null
+assert_equal "File Deletion Preserves Another File's Blocks" "FREE FREE other other" "${DISK_BLOCK_MAP[*]:0:4}"
+
+read_int "Enter a number" actual_num 0 10 <<< $'18446744073709551624\n08' > /dev/null
+assert_equal "Integer Input Rejects Overflow and Normalizes Decimal" "8" "$actual_num"
+read_int_array "Enter numbers" actual_nums 0 20 <<< $'08\t010' > /dev/null
+assert_equal "Integer Array Input Normalizes Decimal" "8 10" "${actual_nums[*]}"
+
+for (( record=1; record<=20; record++ )); do
+    log_simulation_csv "test" "TEST_RECORD_$record" "" "" > /dev/null
+done
+view_saved_reports <<< $'1\n' > "$test_dir/recent.log"
+assert_equal "Report Browser Displays Only the Latest 15 Records" "15" "$(grep -c 'TEST_RECORD_' "$test_dir/recent.log")"
 
 # ------------------------------------------------------------------------------
 # Test Summary
