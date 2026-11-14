@@ -128,12 +128,21 @@ show_live_processes() {
                 return 0
             fi
 
-            if (( t_pid == $$ )); then
-                msg_error "Cannot terminate current shell session (${t_pid})."
+            if (( t_pid == $ )); then
+                msg_error "Cannot terminate the simulator process (${t_pid})."
                 pause_screen
                 return 0
             fi
-
+            if [[ "$PPID" =~ ^[0-9]+$ ]] && (( t_pid == PPID )); then
+                msg_error "Cannot terminate the parent terminal or launcher process (${t_pid})."
+                pause_screen
+                return 0
+            fi
+            if ! has_cmd ps || ! has_cmd kill; then
+                msg_error "Process inspection or termination utilities are unavailable."
+                pause_screen
+                return 0
+            fi
             local p_info
             p_info=$(ps -p "$t_pid" -o pid,user,args 2>/dev/null | tail -n 1)
             if [[ -z "$p_info" ]]; then

@@ -15,15 +15,31 @@ run_page_replacement() {
     local ref_str="$3"
     local silent="${4:-false}"
 
-    local -a pages
-    # shellcheck disable=SC2206
-    pages=($ref_str)
-    local num_refs=${#pages[@]}
-
-    if (( num_refs == 0 || num_frames <= 0 )); then
-        msg_error "Invalid references or frame count."
+    case "$policy" in
+        fifo|lru|optimal) ;;
+        *) msg_error "Unsupported page replacement policy: ${policy:-<empty>}."; return 1 ;;
+    esac
+    local normalized_value
+    if ! normalize_integer "$num_frames" normalized_value || (( normalized_value < 1 || normalized_value > MAX_FRAMES )); then
+        msg_error "Frame count must be an integer between 1 and ${MAX_FRAMES}."
         return 1
     fi
+    num_frames="$normalized_value"
+    local -a pages
+    read -r -a pages <<< "$ref_str"
+    local num_refs=${#pages[@]}
+    if (( num_refs == 0 )); then
+        msg_error "Page reference string cannot be empty."
+        return 1
+    fi
+    local page_idx
+    for page_idx in "${!pages[@]}"; do
+        if ! normalize_integer "${pages[page_idx]}" normalized_value || (( normalized_value < 0 )); then
+            msg_error "Page reference ${pages[page_idx]} must be a non-negative integer."
+            return 1
+        fi
+        pages[page_idx]="$normalized_value"
+    done
 
     # Frames array initialized to empty (-1)
     local -a frames=()

@@ -1,0 +1,23 @@
+name: Bash CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Validate Bash syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+      - name: Run automated acceptance tests
+        run: bash tests/test_runner.sh

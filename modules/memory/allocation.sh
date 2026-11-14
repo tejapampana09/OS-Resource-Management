@@ -13,6 +13,14 @@ run_memory_allocation_sim() {
     local model="${2:-fixed}"
     local is_preset="${3:-false}"
 
+    case "$policy" in
+        first_fit|best_fit|worst_fit) ;;
+        *) msg_error "Unsupported memory allocation policy: ${policy:-<empty>}."; return 1 ;;
+    esac
+    case "$model" in
+        fixed|variable) ;;
+        *) msg_error "Partitioning model must be fixed or variable."; return 1 ;;
+    esac
     local -a block_sizes=()
     local -a process_sizes=()
     local num_blocks num_procs

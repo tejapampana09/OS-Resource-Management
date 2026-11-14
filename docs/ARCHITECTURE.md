@@ -59,4 +59,4 @@ All algorithm modules call `log_simulation_csv` with schema:
 ```csv
 timestamp,module,algorithm,input_summary,result_summary,notes
 ```
-Additionally, visual execution traces (Gantt timelines, page replacement frame matrices, disk seek step sequences) are written to `reports/YYYYMMDD_HHMMSS_<module>_<algorithm>.txt`.
+The FCFS CPU module currently writes a detailed text trace under `reports/`; the other algorithm modules currently persist summary records to CSV. Detailed trace filenames include sub-second timestamp precision to avoid same-second overwrites.

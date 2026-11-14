@@ -27,6 +27,8 @@ source "${SCRIPT_DIR}/modules/memory/allocation.sh"
 source "${SCRIPT_DIR}/modules/memory/paging.sh"
 source "${SCRIPT_DIR}/modules/safety/banker.sh"
 source "${SCRIPT_DIR}/modules/safety/deadlock.sh"
+source "${SCRIPT_DIR}/modules/safety/synchronization.sh"
+source "${SCRIPT_DIR}/modules/system_monitor.sh"
 source "${SCRIPT_DIR}/modules/storage/disk.sh"
 source "${SCRIPT_DIR}/modules/storage/file_allocation.sh"
 
@@ -99,6 +101,12 @@ assert_equal "CPU Round Robin Boundary Queueing (Avg TAT)" "4.00" "$LAST_AVG_TAT
 # P3 arrives before P2 during P1's first slice, despite being entered later.
 run_cpu_round_robin "--preset" 3 "P1 P2 P3" "0 3 1" "5 3 1" 4 > /dev/null
 assert_equal "CPU Round Robin Chronological Arrivals (Avg WT)" "3.00" "$LAST_AVG_WT"
+run_cpu_priority "--preset" 3 "P1 P2 P3" "0 1 2" "4 3 1" "2 1 3" "non-preemptive" > /dev/null
+assert_equal "Priority Non-preemptive Average WT" "2.67" "$LAST_AVG_WT"
+assert_equal "Priority Non-preemptive Average TAT" "5.33" "$LAST_AVG_TAT"
+run_cpu_priority "--preset" 3 "P1 P2 P3" "0 1 2" "8 4 1" "2 1 0" "preemptive" > /dev/null
+assert_equal "Priority Preemptive Average WT" "2.00" "$LAST_AVG_WT"
+assert_equal "Priority Preemptive Average TAT" "6.33" "$LAST_AVG_TAT"
 
 # ------------------------------------------------------------------------------
 # Test Suite 2: Memory Management & Paging
@@ -120,6 +128,12 @@ assert_equal "LRU Page Faults (3 frames, 20 refs)" "12" "$LAST_PAGE_FAULTS"
 # Known textbook result: 9 Page Faults
 run_page_replacement "optimal" 3 "7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1" true
 assert_equal "Optimal Page Faults (3 frames, 20 refs)" "9" "$LAST_PAGE_FAULTS"
+if run_page_replacement "clock" 3 "1 2 3" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Paging Rejects Unsupported Policy" "1" "$status"
+if run_page_replacement "fifo" 3 "1 -2 3" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Paging Rejects Negative Page Reference" "1" "$status"
+if run_page_replacement "fifo" 0 "1 2 3" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Paging Rejects Zero Frames" "1" "$status"
 
 # Test 2.4: Contiguous Memory Allocation
 export -a PRESET_BLOCKS=(100 500 200 300 600)
@@ -182,11 +196,21 @@ assert_equal "Disk SCAN Total Head Movement" "331" "$LAST_DISK_SEEK"
 # Total LOOK Seek = (183 - 53) + (183 - 14) = 130 + 169 = 299
 run_disk_algorithm "look" 53 199 "up" "98 183 37 122 14 124 65 67" true
 assert_equal "Disk LOOK Total Head Movement" "299" "$LAST_DISK_SEEK"
+run_disk_algorithm "c-scan" 53 199 "up" "98 183 37 122 14 124 65 67" true
+assert_equal "Disk C-SCAN Up Total Head Movement" "382" "$LAST_DISK_SEEK"
+run_disk_algorithm "c-scan" 53 199 "down" "98 183 37 122 14 124 65 67" true
+assert_equal "Disk C-SCAN Down Total Head Movement" "386" "$LAST_DISK_SEEK"
 
 run_disk_algorithm "look" 50 199 "down" "50 40 60" false > "$test_dir/look.log"
 assert_equal "Disk LOOK Down Services Initial Head First" "50 -> 50 -> 40 -> 60" "$(awk '/ -> / { sub(/^ +/, ""); print }' "$test_dir/look.log")"
-run_disk_algorithm "fcfs" 250 199 "up" "10" true > /dev/null
+run_disk_algorithm "fcfs" 250 199 "up" "10" true > /dev/null 2>&1
 assert_equal "Disk Rejects Head Beyond Final Cylinder" "1" "$?"
+if run_disk_algorithm "fcfs" 50 199 "up" "10 200" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Disk Rejects Request Beyond Final Cylinder" "1" "$status"
+if run_disk_algorithm "unknown" 50 199 "up" "10" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Disk Rejects Unsupported Algorithm" "1" "$status"
+if run_disk_algorithm "fcfs" 50 199 "sideways" "10" true > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Disk Rejects Invalid Direction" "1" "$status"
 
 print_section "5. File Allocation and Input Regression Tests"
 
@@ -207,6 +231,44 @@ for (( record=1; record<=20; record++ )); do
 done
 view_saved_reports <<< $'1\n' > "$test_dir/recent.log"
 assert_equal "Report Browser Displays Only the Latest 15 Records" "15" "$(grep -c 'TEST_RECORD_' "$test_dir/recent.log")"
+
+save_detailed_trace "test" "COLLISION" "first trace" > /dev/null
+save_detailed_trace "test" "COLLISION" "second trace" > /dev/null
+assert_equal "Detailed Trace Writer Preserves Consecutive Runs" "2" "$(find "$test_dir" -maxdepth 1 -type f -name '*_test_COLLISION.txt' | wc -l | tr -d ' ')"
+
+print_section "6. Synchronization & Host Safety Tests"
+test_sync_valid_state() {
+    local buffer_size=5 mutex=1 empty_slots=5 full_slots=0 in_idx=0 out_idx=0
+    local -a buffer=(EMPTY EMPTY EMPTY EMPTY EMPTY)
+    synchronization_state_is_valid
+}
+test_sync_full_state() {
+    local buffer_size=5 mutex=1 empty_slots=0 full_slots=5 in_idx=0 out_idx=0
+    local -a buffer=(A B C D E)
+    synchronization_state_is_valid
+}
+test_sync_invalid_counter_state() {
+    local buffer_size=5 mutex=1 empty_slots=1 full_slots=5 in_idx=0 out_idx=0
+    local -a buffer=(A B C D E)
+    synchronization_state_is_valid
+}
+if test_sync_valid_state; then status=0; else status=1; fi
+assert_equal "Synchronization Accepts Empty Buffer State" "0" "$status"
+if test_sync_full_state; then status=0; else status=1; fi
+assert_equal "Synchronization Accepts Full Buffer State" "0" "$status"
+if test_sync_invalid_counter_state; then status=0; else status=1; fi
+assert_equal "Synchronization Rejects Inconsistent Semaphore Counts" "1" "$status"
+
+show_live_processes < <(printf '4\n1\n') > "$test_dir/monitor_pid1.log"
+if grep -q "Cannot terminate PID 1" "$test_dir/monitor_pid1.log"; then status=0; else status=1; fi
+assert_equal "System Monitor Protects PID 1" "0" "$status"
+show_live_processes < <(printf '4\n%s\n' "$BASHPID") > "$test_dir/monitor_self.log"
+if grep -q "Cannot terminate the simulator process" "$test_dir/monitor_self.log"; then status=0; else status=1; fi
+assert_equal "System Monitor Protects Its Own Process" "0" "$status"
+parent_pid=$(ps -o ppid= -p "$BASHPID" | tr -d '[:space:]')
+show_live_processes < <(printf '4\n%s\n' "$parent_pid") > "$test_dir/monitor_parent.log"
+if grep -q "Cannot terminate the parent terminal" "$test_dir/monitor_parent.log"; then status=0; else status=1; fi
+assert_equal "System Monitor Protects Parent Terminal" "0" "$status"
 
 # ------------------------------------------------------------------------------
 # Test Summary

@@ -4,7 +4,7 @@
 
 [![Bash Shell](https://img.shields.io/badge/Language-GNU%20Bash%204.4%2B-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/Verified%20on-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#-installation--quick-start)
-[![Tests](https://img.shields.io/badge/Acceptance%20Tests-27%2F27%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
+[![Tests](https://img.shields.io/badge/Acceptance%20Tests-Expanded%20Suite-blue?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
 [![Architecture](https://img.shields.io/badge/Architecture-Modular%20TUI-blue?style=for-the-badge)](#-system-architecture)
 [![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
 
@@ -131,7 +131,7 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
   * RAM and swap usage from `free -h`, with a RAM summary from `/proc/meminfo` as a fallback.
   * Filesystem partitions, mountpoints, and block devices via `df -h` and `lsblk`.
   * Top process inspectors (Top 15 CPU consumers, Top 15 Memory consumers, name filter).
-  * The process inspector also offers an optional SIGTERM action. It blocks PID 1 and the simulator's own process and asks for confirmation before sending the signal.
+  * The process inspector also offers an optional SIGTERM action. It blocks PID 1, the simulator process, and its parent terminal/launcher process, then asks for confirmation before sending the signal.
 
 ### 6. Comparative Benchmarking & Reporting
 * **CSV summaries** for CPU scheduling, memory allocation and paging, Banker’s safety checks, deadlock detection, and individual disk scheduling runs are written to `reports/simulations.csv`. The report browser shows the latest 15 records.
@@ -139,7 +139,7 @@ CPU SCHEDULING      MEMORY             DEADLOCKS            STORAGE        LIVE 
   timestamp,module,algorithm,input_summary,result_summary,notes
   ```
 
-* **Detailed FCFS traces** are saved to `reports/YYYYMMDD_HHMMSS_cpu_FCFS.txt` and can be opened from the report browser.
+* **Detailed FCFS traces** are saved to uniquely named files under `reports/` (timestamps include sub-second precision). Other algorithm modules currently persist CSV summaries; they do not all generate detailed text traces.
 
 ---
 
@@ -224,8 +224,8 @@ OS-Resource-Management/
 │   │   └── file_allocation.sh    # Contiguous, Linked & Indexed file simulators
 │   └── system_monitor.sh         # Module 5: Live Linux host and process monitor
 ├── tests/
-│   └── test_runner.sh            # Automated verification test suite (27 checks)
-├── reports/                      # Auto-generated CSV files and detailed text traces
+│   └── test_runner.sh            # Automated verification test suite
+├── reports/                      # Runtime-generated CSV files and detailed text traces
 ├── docs/
 │   ├── ARCHITECTURE.md           # Formal architectural blueprint & module contracts
 │   └── VIVA_PREPARATION.md       # 15+ Viva questions, talking points, and derivations
@@ -354,7 +354,7 @@ Average Seek Time  : 41.38 cylinders/request
 
 ## 🧪 Automated Testing & Acceptance Criteria
 
-Run the 27 textbook and regression checks from the repository root.
+Run the expanded algorithm, input-validation, reporting, synchronization-invariant, and host-safety regression suite from the repository root.
 
 ```bash
 bash tests/test_runner.sh
@@ -392,7 +392,7 @@ bash tests/test_runner.sh
 | `TC-26` | **Input** | Tab-separated leading-zero decimals | `8 10` | ✅ PASS |
 | `TC-27` | **Reports** | Recent CSV record limit | `15` Records | ✅ PASS |
 
-**Verified result on Linux with Bash 5.2:** 27 passed, 0 failed.
+The test runner prints the exact number of checks and pass/fail totals for the current revision. CI runs Bash syntax validation and the full test suite on pushes and pull requests; use the latest successful workflow run as the verification record.
 
 ---
 

@@ -19,20 +19,40 @@ run_disk_algorithm() {
     local req_str="$5"
     local silent="${6:-false}"
 
-    if (( init_head < 0 || init_head > max_cyl )); then
-        msg_error "Initial head must be between 0 and ${max_cyl}."
+    local normalized_value
+    if ! normalize_integer "$max_cyl" normalized_value || (( normalized_value < 1 || normalized_value > 5000 )); then
+        msg_error "Maximum cylinder must be an integer between 1 and 5000."
         return 1
     fi
-
+    max_cyl="$normalized_value"
+    if ! normalize_integer "$init_head" normalized_value || (( normalized_value < 0 || normalized_value > max_cyl )); then
+        msg_error "Initial head must be an integer between 0 and ${max_cyl}."
+        return 1
+    fi
+    init_head="$normalized_value"
+    case "$algo" in
+        fcfs|sstf|scan|c-scan|look) ;;
+        *) msg_error "Unsupported disk scheduling algorithm: ${algo:-<empty>}."; return 1 ;;
+    esac
+    if [[ "$dir" != "up" && "$dir" != "down" ]]; then
+        msg_error "Direction must be up or down."
+        return 1
+    fi
     local -a requests
-    # shellcheck disable=SC2206
-    requests=($req_str)
+    read -r -a requests <<< "$req_str"
     local num_req=${#requests[@]}
-
     if (( num_req == 0 )); then
         msg_error "No requests provided."
         return 1
     fi
+    local request_idx
+    for request_idx in "${!requests[@]}"; do
+        if ! normalize_integer "${requests[request_idx]}" normalized_value || (( normalized_value < 0 || normalized_value > max_cyl )); then
+            msg_error "Request ${requests[request_idx]} is outside the valid cylinder range."
+            return 1
+        fi
+        requests[request_idx]="$normalized_value"
+    done
 
     local -a sequence=("$init_head")
     local -a step_moves=()

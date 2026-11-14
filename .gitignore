@@ -1,0 +1,8 @@
+# Runtime-generated simulation reports (existing tracked examples remain tracked)
+/reports/*.csv
+/reports/*.txt
+
+# Editor and OS noise
+.DS_Store
+*.swp
+*.swo

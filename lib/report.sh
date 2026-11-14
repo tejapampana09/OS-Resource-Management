@@ -35,8 +35,14 @@ save_detailed_trace() {
     local algorithm="$2"
     local content="$3"
     local file_ts
-    file_ts=$(date +"%Y%m%d_%H%M%S")
+    # Nanosecond precision prevents same-second runs from overwriting traces.
+    file_ts=$(date +"%Y%m%d_%H%M%S_%N")
     local filename="${REPORTS_DIR}/${file_ts}_${module}_${algorithm}.txt"
+    local suffix=1
+    while [[ -e "$filename" ]]; do
+        filename="${REPORTS_DIR}/${file_ts}_${suffix}_${module}_${algorithm}.txt"
+        suffix=$(( suffix + 1 ))
+    done
 
     {
         echo "================================================================================"

@@ -3,6 +3,23 @@
 # modules/safety/synchronization.sh - Process Synchronization & Bounded-Buffer Simulation
 # ==============================================================================
 
+# Validate semaphore counters and physical buffer contents.
+# The caller's local state is visible through Bash's dynamic function scope.
+synchronization_state_is_valid() {
+    local slot empty_count=0 full_count=0
+    (( buffer_size > 0 && mutex >= 0 && mutex <= 1 )) || return 1
+    (( empty_slots >= 0 && full_slots >= 0 && empty_slots + full_slots == buffer_size )) || return 1
+    (( in_idx >= 0 && in_idx < buffer_size && out_idx >= 0 && out_idx < buffer_size )) || return 1
+    for slot in "${buffer[@]}"; do
+        if [[ "$slot" == "EMPTY" ]]; then
+            empty_count=$(( empty_count + 1 ))
+        else
+            full_count=$(( full_count + 1 ))
+        fi
+    done
+    (( empty_count == empty_slots && full_count == full_slots ))
+}
+
 # Interactive Bounded-Buffer Producer-Consumer Simulation
 run_synchronization_demo() {
     local buffer_size=5
@@ -127,5 +144,9 @@ run_synchronization_demo() {
                 return 0
                 ;;
         esac
+        if ! synchronization_state_is_valid; then
+            msg_error "Internal synchronization invariant failed; stopping the simulation."
+            return 1
+        fi
     done
 }
