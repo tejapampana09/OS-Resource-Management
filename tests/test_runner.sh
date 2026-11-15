@@ -236,21 +236,21 @@ print_section "5. File Allocation and Input Regression Tests"
 init_file_system
 run_contiguous_allocation_demo <<< $'same\n2\n' > /dev/null
 run_linked_allocation_demo <<< $'same\nFREE\nIDX_other\nother\n2\n' > /dev/null
-assert_equal "File Allocation Rejects Duplicate and Reserved Names" "same other" "\${FILE_NAMES[*]}"
+assert_equal "File Allocation Rejects Duplicate and Reserved Names" "same other" "${FILE_NAMES[*]}"
 list_and_delete_files <<< $'1\n1\n' > /dev/null
-assert_equal "File Deletion Preserves Another File's Blocks" "FREE FREE other other" "\${DISK_BLOCK_MAP[*]:0:4}"
+assert_equal "File Deletion Preserves Another File's Blocks" "FREE FREE other other" "${DISK_BLOCK_MAP[*]:0:4}"
 
 init_file_system
 run_indexed_allocation_demo <<< $'indexed\n2\n\n' > /dev/null
-assert_equal "Indexed Allocation Reserves Index Block" "IDX_indexed" "\${DISK_BLOCK_MAP[0]}"
-assert_equal "Indexed Allocation Reserves Data Blocks" "indexed indexed" "\${DISK_BLOCK_MAP[1]} \${DISK_BLOCK_MAP[2]}"
+assert_equal "Indexed Allocation Reserves Index Block" "IDX_indexed" "${DISK_BLOCK_MAP[0]}"
+assert_equal "Indexed Allocation Reserves Data Blocks" "indexed indexed" "${DISK_BLOCK_MAP[1]} ${DISK_BLOCK_MAP[2]}"
 list_and_delete_files <<< $'1\n1\n\n' > /dev/null
-assert_equal "Indexed File Deletion Frees Index and Data Blocks" "FREE FREE FREE" "\${DISK_BLOCK_MAP[*]:0:3}"
+assert_equal "Indexed File Deletion Frees Index and Data Blocks" "FREE FREE FREE" "${DISK_BLOCK_MAP[*]:0:3}"
 
 read_int "Enter a number" actual_num 0 10 <<< $'18446744073709551624\n08' > /dev/null
 assert_equal "Integer Input Rejects Overflow and Normalizes Decimal" "8" "$actual_num"
 read_int_array "Enter numbers" actual_nums 0 20 <<< $'08\t010' > /dev/null
-assert_equal "Integer Array Input Normalizes Decimal" "8 10" "\${actual_nums[*]}"
+assert_equal "Integer Array Input Normalizes Decimal" "8 10" "${actual_nums[*]}"
 
 for (( record=1; record<=20; record++ )); do
     log_simulation_csv "test" "TEST_RECORD_$record" "" "" > /dev/null
