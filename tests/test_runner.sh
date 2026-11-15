@@ -183,6 +183,15 @@ fi
 # ------------------------------------------------------------------------------
 # Test Suite 4: Disk Scheduling
 # ------------------------------------------------------------------------------
+run_deadlock_detection "nodeadlock" > "$test_dir/no_deadlock.log"
+if grep -q "\[NO DEADLOCK DETECTED\]" "$test_dir/no_deadlock.log"; then
+    assert_equal "Deadlock Detection Safe Completion Test" "NO_DEADLOCK" "NO_DEADLOCK"
+else
+    assert_equal "Deadlock Detection Safe Completion Test" "NO_DEADLOCK" "DEADLOCKED"
+fi
+if run_deadlock_detection false <<< $'1\n1\n0\n1\n2\n' > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Deadlock Detection Rejects Impossible Resource Request" "1" "$status"
+
 print_section "4. Disk Scheduling Known-Answer Tests"
 
 # Silberschatz Queue: 98 183 37 122 14 124 65 67, Initial Head: 53
@@ -227,149 +236,21 @@ print_section "5. File Allocation and Input Regression Tests"
 init_file_system
 run_contiguous_allocation_demo <<< $'same\n2\n' > /dev/null
 run_linked_allocation_demo <<< $'same\nFREE\nIDX_other\nother\n2\n' > /dev/null
-assert_equal "File Allocation Rejects Duplicate and Reserved Names" "same other" "${FILE_NAMES[*]}"
+assert_equal "File Allocation Rejects Duplicate and Reserved Names" "same other" "\${FILE_NAMES[*]}"
 list_and_delete_files <<< $'1\n1\n' > /dev/null
-assert_equal "File Deletion Preserves Another File's Blocks" "FREE FREE other other" "${DISK_BLOCK_MAP[*]:0:4}"
+assert_equal "File Deletion Preserves Another File's Blocks" "FREE FREE other other" "\${DISK_BLOCK_MAP[*]:0:4}"
 
 init_file_system
-run_indexed_allocation_demo <<<  "Enter a number" actual_num 0 10 <<< $'18446744073709551624\n08' > /dev/null
-assert_equal "Integer Input Rejects Overflow and Normalizes Decimal" "8" "$actual_num"
-read_int_array "Enter numbers" actual_nums 0 20 <<< $'08\t010' > /dev/null
-assert_equal "Integer Array Input Normalizes Decimal" "8 10" "${actual_nums[*]}"
-
-for (( record=1; record<=20; record++ )); do
-    log_simulation_csv "test" "TEST_RECORD_$record" "" "" > /dev/null
-done
-view_saved_reports <<< $'1\n' > "$test_dir/recent.log"
-assert_equal "Report Browser Displays Only the Latest 15 Records" "15" "$(grep -c 'TEST_RECORD_' "$test_dir/recent.log")"
-
-save_detailed_trace "test" "COLLISION" "first trace" > /dev/null
-save_detailed_trace "test" "COLLISION" "second trace" > /dev/null
-assert_equal "Detailed Trace Writer Preserves Consecutive Runs" "2" "$(find "$test_dir" -maxdepth 1 -type f -name '*_test_COLLISION.txt' | wc -l | tr -d ' ')"
-
-print_section "6. Synchronization & Host Safety Tests"
-test_sync_valid_state() {
-    local buffer_size=5 mutex=1 empty_slots=5 full_slots=0 in_idx=0 out_idx=0
-    local -a buffer=(EMPTY EMPTY EMPTY EMPTY EMPTY)
-    synchronization_state_is_valid
-}
-test_sync_full_state() {
-    local buffer_size=5 mutex=1 empty_slots=0 full_slots=5 in_idx=0 out_idx=0
-    local -a buffer=(A B C D E)
-    synchronization_state_is_valid
-}
-test_sync_invalid_counter_state() {
-    local buffer_size=5 mutex=1 empty_slots=1 full_slots=5 in_idx=0 out_idx=0
-    local -a buffer=(A B C D E)
-    synchronization_state_is_valid
-}
-if test_sync_valid_state; then status=0; else status=1; fi
-assert_equal "Synchronization Accepts Empty Buffer State" "0" "$status"
-if test_sync_full_state; then status=0; else status=1; fi
-assert_equal "Synchronization Accepts Full Buffer State" "0" "$status"
-if test_sync_invalid_counter_state; then status=0; else status=1; fi
-assert_equal "Synchronization Rejects Inconsistent Semaphore Counts" "1" "$status"
-
-show_live_processes < <(printf '4\n1\n') > "$test_dir/monitor_pid1.log"
-if grep -q "Cannot terminate PID 1" "$test_dir/monitor_pid1.log"; then status=0; else status=1; fi
-assert_equal "System Monitor Protects PID 1" "0" "$status"
-self_pid="$BASHPID"
-show_live_processes < <(printf '4\n%s\n' "$self_pid") > "$test_dir/monitor_self.log"
-if grep -q "Cannot terminate the simulator process" "$test_dir/monitor_self.log"; then status=0; else status=1; fi
-assert_equal "System Monitor Protects Its Own Process" "0" "$status"
-parent_pid=$(ps -o ppid= -p "$self_pid" | tr -d '[:space:]')
-show_live_processes < <(printf '4\n%s\n' "$parent_pid") > "$test_dir/monitor_parent.log"
-if grep -q "Cannot terminate the parent terminal" "$test_dir/monitor_parent.log"; then status=0; else status=1; fi
-assert_equal "System Monitor Protects Parent Terminal" "0" "$status"
-
-# ------------------------------------------------------------------------------
-# Test Summary
-# ------------------------------------------------------------------------------
-echo -e "\n================================================================================"
-echo -e "TEST EXECUTION SUMMARY:"
-echo -e "  Total Tests  : ${TOTAL_TESTS}"
-echo -e "  Passed Tests : ${COLOR_GREEN}${PASSED_TESTS}${COLOR_RESET}"
-echo -e "  Failed Tests : ${COLOR_RED}${FAILED_TESTS}${COLOR_RESET}"
-echo -e "================================================================================\n"
-
-if (( FAILED_TESTS > 0 )); then
-    exit 1
-fi
-exit 0
-indexed\\n2\\n\\n' > /dev/null
-assert_equal "Indexed Allocation Reserves Index Block" "IDX_indexed" "${DISK_BLOCK_MAP[0]}"
-assert_equal "Indexed Allocation Reserves Data Blocks" "indexed indexed" "${DISK_BLOCK_MAP[1]} ${DISK_BLOCK_MAP[2]}"
-list_and_delete_files <<<  "Enter a number" actual_num 0 10 <<< $'18446744073709551624\n08' > /dev/null
-assert_equal "Integer Input Rejects Overflow and Normalizes Decimal" "8" "$actual_num"
-read_int_array "Enter numbers" actual_nums 0 20 <<< $'08\t010' > /dev/null
-assert_equal "Integer Array Input Normalizes Decimal" "8 10" "${actual_nums[*]}"
-
-for (( record=1; record<=20; record++ )); do
-    log_simulation_csv "test" "TEST_RECORD_$record" "" "" > /dev/null
-done
-view_saved_reports <<< $'1\n' > "$test_dir/recent.log"
-assert_equal "Report Browser Displays Only the Latest 15 Records" "15" "$(grep -c 'TEST_RECORD_' "$test_dir/recent.log")"
-
-save_detailed_trace "test" "COLLISION" "first trace" > /dev/null
-save_detailed_trace "test" "COLLISION" "second trace" > /dev/null
-assert_equal "Detailed Trace Writer Preserves Consecutive Runs" "2" "$(find "$test_dir" -maxdepth 1 -type f -name '*_test_COLLISION.txt' | wc -l | tr -d ' ')"
-
-print_section "6. Synchronization & Host Safety Tests"
-test_sync_valid_state() {
-    local buffer_size=5 mutex=1 empty_slots=5 full_slots=0 in_idx=0 out_idx=0
-    local -a buffer=(EMPTY EMPTY EMPTY EMPTY EMPTY)
-    synchronization_state_is_valid
-}
-test_sync_full_state() {
-    local buffer_size=5 mutex=1 empty_slots=0 full_slots=5 in_idx=0 out_idx=0
-    local -a buffer=(A B C D E)
-    synchronization_state_is_valid
-}
-test_sync_invalid_counter_state() {
-    local buffer_size=5 mutex=1 empty_slots=1 full_slots=5 in_idx=0 out_idx=0
-    local -a buffer=(A B C D E)
-    synchronization_state_is_valid
-}
-if test_sync_valid_state; then status=0; else status=1; fi
-assert_equal "Synchronization Accepts Empty Buffer State" "0" "$status"
-if test_sync_full_state; then status=0; else status=1; fi
-assert_equal "Synchronization Accepts Full Buffer State" "0" "$status"
-if test_sync_invalid_counter_state; then status=0; else status=1; fi
-assert_equal "Synchronization Rejects Inconsistent Semaphore Counts" "1" "$status"
-
-show_live_processes < <(printf '4\n1\n') > "$test_dir/monitor_pid1.log"
-if grep -q "Cannot terminate PID 1" "$test_dir/monitor_pid1.log"; then status=0; else status=1; fi
-assert_equal "System Monitor Protects PID 1" "0" "$status"
-self_pid="$BASHPID"
-show_live_processes < <(printf '4\n%s\n' "$self_pid") > "$test_dir/monitor_self.log"
-if grep -q "Cannot terminate the simulator process" "$test_dir/monitor_self.log"; then status=0; else status=1; fi
-assert_equal "System Monitor Protects Its Own Process" "0" "$status"
-parent_pid=$(ps -o ppid= -p "$self_pid" | tr -d '[:space:]')
-show_live_processes < <(printf '4\n%s\n' "$parent_pid") > "$test_dir/monitor_parent.log"
-if grep -q "Cannot terminate the parent terminal" "$test_dir/monitor_parent.log"; then status=0; else status=1; fi
-assert_equal "System Monitor Protects Parent Terminal" "0" "$status"
-
-# ------------------------------------------------------------------------------
-# Test Summary
-# ------------------------------------------------------------------------------
-echo -e "\n================================================================================"
-echo -e "TEST EXECUTION SUMMARY:"
-echo -e "  Total Tests  : ${TOTAL_TESTS}"
-echo -e "  Passed Tests : ${COLOR_GREEN}${PASSED_TESTS}${COLOR_RESET}"
-echo -e "  Failed Tests : ${COLOR_RED}${FAILED_TESTS}${COLOR_RESET}"
-echo -e "================================================================================\n"
-
-if (( FAILED_TESTS > 0 )); then
-    exit 1
-fi
-exit 0
-1\\n1\\n\\n' > /dev/null
-assert_equal "Indexed File Deletion Frees Index and Data Blocks" "FREE FREE FREE" "${DISK_BLOCK_MAP[*]:0:3}"
+run_indexed_allocation_demo <<< $'indexed\n2\n\n' > /dev/null
+assert_equal "Indexed Allocation Reserves Index Block" "IDX_indexed" "\${DISK_BLOCK_MAP[0]}"
+assert_equal "Indexed Allocation Reserves Data Blocks" "indexed indexed" "\${DISK_BLOCK_MAP[1]} \${DISK_BLOCK_MAP[2]}"
+list_and_delete_files <<< $'1\n1\n\n' > /dev/null
+assert_equal "Indexed File Deletion Frees Index and Data Blocks" "FREE FREE FREE" "\${DISK_BLOCK_MAP[*]:0:3}"
 
 read_int "Enter a number" actual_num 0 10 <<< $'18446744073709551624\n08' > /dev/null
 assert_equal "Integer Input Rejects Overflow and Normalizes Decimal" "8" "$actual_num"
 read_int_array "Enter numbers" actual_nums 0 20 <<< $'08\t010' > /dev/null
-assert_equal "Integer Array Input Normalizes Decimal" "8 10" "${actual_nums[*]}"
+assert_equal "Integer Array Input Normalizes Decimal" "8 10" "\${actual_nums[*]}"
 
 for (( record=1; record<=20; record++ )); do
     log_simulation_csv "test" "TEST_RECORD_$record" "" "" > /dev/null
@@ -430,3 +311,4 @@ if (( FAILED_TESTS > 0 )); then
     exit 1
 fi
 exit 0
+
