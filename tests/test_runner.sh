@@ -10,11 +10,11 @@ set +e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${SCRIPT_DIR}"
 
-source "${SCRIPT_DIR}/config.sh"
 test_dir=$(mktemp -d) || exit 1
 trap 'rm -rf -- "$test_dir"' EXIT
-REPORTS_DIR="$test_dir"
-REPORT_CSV="$test_dir/simulations.csv"
+export REPORTS_DIR="$test_dir"
+export REPORT_CSV="$test_dir/simulations.csv"
+source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/lib/input.sh"
 source "${SCRIPT_DIR}/lib/display.sh"
 source "${SCRIPT_DIR}/lib/report.sh"
@@ -183,6 +183,15 @@ fi
 # ------------------------------------------------------------------------------
 # Test Suite 4: Disk Scheduling
 # ------------------------------------------------------------------------------
+run_deadlock_detection "nodeadlock" > "$test_dir/no_deadlock.log"
+if grep -q "\[NO DEADLOCK DETECTED\]" "$test_dir/no_deadlock.log"; then
+    assert_equal "Deadlock Detection Safe Completion Test" "NO_DEADLOCK" "NO_DEADLOCK"
+else
+    assert_equal "Deadlock Detection Safe Completion Test" "NO_DEADLOCK" "DEADLOCKED"
+fi
+if run_deadlock_detection false <<< $'1\n1\n0\n1\n2\n' > /dev/null 2>&1; then status=0; else status=$?; fi
+assert_equal "Deadlock Detection Rejects Impossible Resource Request" "1" "$status"
+
 print_section "4. Disk Scheduling Known-Answer Tests"
 
 # Silberschatz Queue: 98 183 37 122 14 124 65 67, Initial Head: 53
@@ -230,6 +239,13 @@ run_linked_allocation_demo <<< $'same\nFREE\nIDX_other\nother\n2\n' > /dev/null
 assert_equal "File Allocation Rejects Duplicate and Reserved Names" "same other" "${FILE_NAMES[*]}"
 list_and_delete_files <<< $'1\n1\n' > /dev/null
 assert_equal "File Deletion Preserves Another File's Blocks" "FREE FREE other other" "${DISK_BLOCK_MAP[*]:0:4}"
+
+init_file_system
+run_indexed_allocation_demo <<< $'indexed\n2\n\n' > /dev/null
+assert_equal "Indexed Allocation Reserves Index Block" "IDX_indexed" "${DISK_BLOCK_MAP[0]}"
+assert_equal "Indexed Allocation Reserves Data Blocks" "indexed indexed" "${DISK_BLOCK_MAP[1]} ${DISK_BLOCK_MAP[2]}"
+list_and_delete_files <<< $'1\n1\n\n' > /dev/null
+assert_equal "Indexed File Deletion Frees Index and Data Blocks" "FREE FREE FREE" "${DISK_BLOCK_MAP[*]:0:3}"
 
 read_int "Enter a number" actual_num 0 10 <<< $'18446744073709551624\n08' > /dev/null
 assert_equal "Integer Input Rejects Overflow and Normalizes Decimal" "8" "$actual_num"
@@ -295,3 +311,4 @@ if (( FAILED_TESTS > 0 )); then
     exit 1
 fi
 exit 0
+

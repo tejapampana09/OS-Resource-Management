@@ -7,7 +7,7 @@
 # Determine base directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export OS_SIM_ROOT="${SCRIPT_DIR}"
-export REPORTS_DIR="${OS_SIM_ROOT}/reports"
+export REPORTS_DIR="${REPORTS_DIR:-${OS_SIM_ROOT}/reports}"
 export DOCS_DIR="${OS_SIM_ROOT}/docs"
 
 # Ensure reports directory exists
@@ -53,7 +53,7 @@ export MAX_PAGES=50
 export MAX_FRAMES=10
 export MAX_DISK_REQUESTS=30
 export DEFAULT_DISK_CYLINDERS=200
-export REPORT_CSV="${REPORTS_DIR}/simulations.csv"
+export REPORT_CSV="${REPORT_CSV:-${REPORTS_DIR}/simulations.csv}"
 
 # Initialize report CSV if not exists
 if [[ ! -f "${REPORT_CSV}" ]]; then
