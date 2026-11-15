@@ -56,6 +56,22 @@ run_deadlock_detection() {
         done
     fi
 
+    # A process cannot request more instances of a resource type than
+    # exist in the entire system (currently available + currently allocated).
+    # Reject impossible matrices instead of misreporting them as deadlocks.
+    for (( j=0; j<num_r; j++ )); do
+        local total_instances="${avail[j]}"
+        for (( i=0; i<num_p; i++ )); do
+            total_instances=$(( total_instances + alloc[i*num_r + j] ))
+        done
+        for (( i=0; i<num_p; i++ )); do
+            if (( request[i*num_r + j] > total_instances )); then
+                msg_error "Invalid request: P$(( i + 1 )) requests ${request[i*num_r + j]} instance(s) of R$(( j + 1 )), but only ${total_instances} exist in the system."
+                return 1
+            fi
+        done
+    done
+
     # Display inputs
     print_section "Current Resource & Request Status"
     echo -ne "PID       | "
