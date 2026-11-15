@@ -4,7 +4,7 @@
 
 [![Bash Shell](https://img.shields.io/badge/Language-GNU%20Bash%204.4%2B-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/Verified%20on-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#-installation--quick-start)
-[![Tests](https://img.shields.io/badge/Acceptance%20Tests-51%2F51%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
+[![Tests](https://img.shields.io/badge/Acceptance%20Tests-56%2F56%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](./tests/test_runner.sh)
 [![Architecture](https://img.shields.io/badge/Architecture-Modular%20TUI-blue?style=for-the-badge)](#-system-architecture)
 [![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
 
